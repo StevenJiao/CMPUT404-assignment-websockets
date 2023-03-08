@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) 2023 Abram Hindle, Steven Jiao
+# Copyright (c) 2013-2014 Abram Hindle
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 import flask
-from flask import Flask, request, redirect
+from flask import Flask, request
 from flask_sockets import Sockets
 import gevent
 from gevent import queue
@@ -25,6 +25,28 @@ import os
 app = Flask(__name__)
 sockets = Sockets(app)
 app.debug = True
+
+'''Clients, sendall(), send_all_json(), and Client() are from https://github.com/uofa-cmput404/cmput404-slides/blob/master/examples/WebSocketsExamples/exercise.py'''
+clients = list()
+
+def send_all(msg):
+    for client in clients:
+        client.put( msg )
+
+def send_all_json(obj):
+    send_all( json.dumps(obj) )
+
+class Client:
+    def __init__(self):
+        self.queue = queue.Queue()
+
+    def put(self, v):
+        self.queue.put_nowait(v)
+
+    def get(self):
+        return self.queue.get()
+
+
 
 class World:
     def __init__(self):
@@ -63,20 +85,19 @@ myWorld = World()
 
 def set_listener( entity, data ):
     ''' do something with the update ! '''
-    myWorld.set(entity, data)
 
 myWorld.add_set_listener( set_listener )
         
 @app.route('/')
 def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
-    return redirect('/static/index.html')
+    return None
 
 def read_ws(ws,client):
     '''A greenlet function that reads from the websocket and updates the world'''
     # XXX: TODO IMPLEMENT ME
 
-    # https://github.com/uofa-cmput404/cmput404-slides/blob/master/examples/WebSocketsExamples/exercise.py
+     # https://github.com/uofa-cmput404/cmput404-slides/blob/master/examples/WebSocketsExamples/exercise.py
     try:
         while True:
             msg = ws.receive()
@@ -96,15 +117,20 @@ def subscribe_socket(ws):
     # XXX: TODO IMPLEMENT ME
 
     # https://github.com/uofa-cmput404/cmput404-slides/blob/master/examples/WebSocketsExamples/exercise.py
-    client = queue.Queue()
+    client = Client()
+    clients.append(client)
     g = gevent.spawn( read_ws, ws, client )    
+    print("Subscribing")
     try:
         while True:
+            # block here
             msg = client.get()
+            print("Got a message!")
             ws.send(msg)
-    except Exception as e: # WebSocketError as e:
+    except Exception as e:# WebSocketError as e:
         print("WS Error %s" % e)
     finally:
+        clients.remove(client)
         gevent.kill(g)
 
 
