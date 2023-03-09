@@ -102,12 +102,11 @@ def read_ws(ws,client):
     try:
         while True:
             msg = ws.receive()
-            print("WS RECV: %s" % msg)
+            # print("WS RECV: %s" % msg)
             if (msg is not None):
                 packet = json.loads(msg)
                 for entity in packet:
-                    for key in packet[entity]:
-                        myWorld.update(entity, key, packet[entity][key])
+                    myWorld.set(entity, packet[entity])
             else:
                 break
     except:
@@ -123,7 +122,7 @@ def subscribe_socket(ws):
     client = Client()
     clients.append(client)
     g = gevent.spawn( read_ws, ws, client )    
-    print("Subscribing")
+    # print("Subscribing")
     try:
         while True:
             # block here
