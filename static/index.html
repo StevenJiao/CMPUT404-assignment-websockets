@@ -42,6 +42,34 @@ function debug(str) {
 }
 debug("Test");
 
+
+// my working code from assignment 4
+function sendJSONXMLHTTPRequest(url, objects, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState==4) {
+            try {
+                if (xhr.status==200) {
+                    //XXX: parse some JSON from the request!
+                    //XXX: Pass the data to the callback!
+                    callback(JSON.parse(xhr.responseText))
+                }
+            } 
+            catch(e) {
+                alert('Error: ' + e.name);
+            }
+        }
+    };
+    //XXX: POST to a URL
+    xhr.open(objects['method'], url)
+    //XXX: set the mimetype and the accept headers!
+    xhr.setRequestHeader('Accept', objects['accept'])
+    // Remember to use application/json !
+    xhr.setRequestHeader('Content-Type', 'application/json')
+
+    xhr.send(JSON.stringify(objects['data']))
+}
+
 world = {};
 var fillStyleInd = 0;
 // red, blue, green, purple, pink, yellow, add any colours!
@@ -265,6 +293,20 @@ function wsSetup() {
     socket = new WebSocket(url);
     socket.onopen = function() {
         debug("I am finally working")
+
+        // get the current state of the world
+        sendJSONXMLHTTPRequest(
+            "http://" + host + '/world',
+            {
+                'accept': 'application/json',
+                'method': 'GET',
+                'data': world
+            },
+            (data) => {
+                world = data
+                drawNextFrame()
+            }
+        )
     };
     socket.onerror = function(msg) {
         debug("WebSocket Error:" + msg.data);
@@ -273,7 +315,6 @@ function wsSetup() {
         try {
             debug("WebSocket Recv:" + msg.data);
             let data = JSON.parse(msg.data)
-            // data.keys()[0]
             key = Object.keys(data)[0]
             world[key] = data[key]
             drawNextFrame()
